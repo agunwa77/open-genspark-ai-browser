@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
+import { useAuthStore } from "@/lib/auth-store"
+import { AuthPage } from "@/components/auth-page"
 import { BrowserHeader } from "@/components/browser-header"
 import { BrowserViewport } from "@/components/browser-viewport"
 import { DOMInspector } from "@/components/dom-inspector"
@@ -10,13 +12,17 @@ import { ControlPanel } from "@/components/control-panel"
 import { SettingsPage } from "@/components/settings-page"
 import { ClaudeChat } from "@/components/claude-chat"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { MessageSquare, SettingsIcon } from "lucide-react"
+import { MessageSquare, SettingsIcon, LogOut } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function Home() {
   const [agentRunning, setAgentRunning] = useState(false)
   const [activeTab, setActiveTab] = useState("chat")
   const [agentLogs, setAgentLogs] = useState<any[]>([])
   const [scrapingResults, setScrapingResults] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const { isAuthenticated, setUser, logout } = useAuthStore()
 
   const handleAgentTask = useCallback(async (task: string, url: string) => {
     setAgentRunning(true)
@@ -31,7 +37,6 @@ export default function Home() {
     ])
 
     try {
-      // Add log
       setAgentLogs((prev) => [
         ...prev,
         {
@@ -43,7 +48,6 @@ export default function Home() {
         },
       ])
 
-      // Call scraping API
       const response = await fetch("/api/browser/scrape", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,7 +62,6 @@ export default function Home() {
       if (!response.ok) throw new Error("Scraping failed")
       const data = await response.json()
 
-      // Add success log
       setAgentLogs((prev) => [
         ...prev,
         {
@@ -70,7 +73,6 @@ export default function Home() {
         },
       ])
 
-      // Add result
       setScrapingResults((prev) => [
         ...prev,
         {
@@ -110,12 +112,43 @@ export default function Home() {
     }
   }, [])
 
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token")
+    if (token) {
+      fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.user) setUser(data.user)
+        })
+        .catch(() => logout())
+        .finally(() => setIsLoading(false))
+    } else {
+      setIsLoading(false)
+    }
+  }, [setUser, logout])
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>
+  }
+
+  if (!isAuthenticated) {
+    return <AuthPage />
+  }
+
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       <BrowserHeader />
 
+      <div className="flex justify-end px-4 py-2 border-b border-border/30">
+        <Button variant="ghost" size="sm" onClick={logout} className="text-muted-foreground hover:text-foreground">
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
+      </div>
+
       <div className="flex flex-1 overflow-hidden gap-4 p-4">
-        {/* Main Content Area */}
         <div className="flex-1 flex flex-col gap-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1">
             <TabsList className="grid w-full grid-cols-6">
@@ -159,7 +192,6 @@ export default function Home() {
           </Tabs>
         </div>
 
-        {/* Control Panel - Only show for browser/agent tabs */}
         {(activeTab === "browser" || activeTab === "output" || activeTab === "scraping") && (
           <div className="w-80">
             <ControlPanel

@@ -1,56 +1,38 @@
 import { streamText } from "ai"
 import { type NextRequest, NextResponse } from "next/server"
-import { PROVIDERS } from "@/lib/ai-providers"
+import { buildContextPrompt } from "@/lib/memory-manager"
 
 interface ChatRequest {
   messages: Array<{ role: string; content: string }>
-  model: string
-  provider: string
+  userId: string
   temperature?: number
   maxTokens?: number
-}
-
-// Dynamic model selection based on provider
-async function getModelForProvider(provider: string, modelId: string) {
-  if (provider === "anthropic") {
-    const Anthropic = (await import("@anthropic-ai/sdk")).default
-    return new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    }).messages
-  } else if (provider === "google") {
-    // Google uses different SDK
-    const { GoogleGenerativeAI } = await import("@google/generative-ai")
-    const client = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY)
-    return client.getGenerativeModel({ model: modelId })
-  }
-  // Additional providers handled here
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json()
-    const { messages, model, provider, temperature = 0.7, maxTokens = 2048 } = body
+    const { messages, userId, temperature = 0.7, maxTokens = 2048 } = body
 
-    // Validate provider is configured
-    const selectedProvider = PROVIDERS[provider]
-    if (!selectedProvider?.isConfigured) {
-      return NextResponse.json({ error: `Provider ${provider} not configured` }, { status: 400 })
-    }
+    const contextPrompt = userId ? await buildContextPrompt(userId) : ""
 
-    // Use AI SDK to stream response
+    const systemPrompt =
+      contextPrompt +
+      "You are an intelligent AGI-like assistant with persistent memory and context awareness. " +
+      "Help users navigate, analyze, and understand web content. Learn from interactions and remember patterns. " +
+      "Provide clear, concise responses while maintaining conversation context."
+
     const result = await streamText({
-      model: `${provider}/${model}`,
+      model: "openai/gpt-4o-mini",
       messages: messages.map((m) => ({
         role: m.role as "user" | "assistant",
         content: m.content,
       })),
       temperature,
       maxTokens,
-      system:
-        "You are an intelligent AI assistant powering a web browser. Help users navigate, analyze, and understand web content. Provide clear, concise responses.",
+      system: systemPrompt,
     })
 
-    // Return streaming response
     return result.toUIMessageStreamResponse()
   } catch (error) {
     console.error("[AI Stream Error]", error)
