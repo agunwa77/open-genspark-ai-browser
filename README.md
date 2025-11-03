@@ -12,40 +12,66 @@ A sophisticated web scraping and automation platform powered by local AI models.
 - **Multi-provider Support**: Switch between AI providers
 - **Production Ready**: Docker, Kubernetes, and Vercel deployment support
 
-## Quick Start
+## 🚀 Installation & Setup
 
-### Local Development
+This project requires a PostgreSQL database (e.g., [Neon](https://neon.tech/)) for user authentication, chat history, and AI memory.
 
-\`\`\`bash
-git clone https://github.com/your-username/genspark-ai-browser.git
-cd genspark-ai-browser
-npm install
-npm run dev
-\`\`\`
+### 1. Prerequisites
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+*   Node.js (v18+)
+*   pnpm (recommended package manager)
+*   A PostgreSQL database instance (e.g., Neon, Supabase, or local instance)
 
-### Docker
+### 2. Clone the Repository
 
 \`\`\`bash
-docker-compose up -d
+git clone https://github.com/agunwa77/open-genspark-ai-browser.git
+cd open-genspark-ai-browser
 \`\`\`
 
-### Kubernetes
+### 3. Environment Configuration
 
-\`\`\`bash
-kubectl apply -f kubernetes/
-\`\`\`
-
-## Configuration
-
-Copy `.env.example` to `.env.local`:
+Create a file named `.env.local` in the root directory and populate it with the required environment variables.
 
 \`\`\`bash
 cp .env.example .env.local
+# Note: .env.example is not in the repo, so this step is for documentation only.
+# Manually create .env.local
 \`\`\`
 
-Configure AI provider API keys as needed.
+| Variable | Description | Example Value |
+| :--- | :--- | :--- |
+| **`NEON_DATABASE_URL`** | **REQUIRED.** Your connection string for the PostgreSQL database. | `postgres://user:password@host/database` |
+| `ANTHROPIC_API_KEY` | Optional. Your API key for Anthropic Claude models. | `sk-ant-xxx` |
+| `GOOGLE_API_KEY` | Optional. Your API key for Google Gemini models. | `AIzaSy-xxx` |
+| `COHERE_API_KEY` | Optional. Your API key for Cohere models. | `xxx` |
+| `MISTRAL_API_KEY` | Optional. Your API key for Mistral AI models. | `xxx` |
+| `LITELLM_API_KEY` | Optional. Your API key for LiteLLM. | `xxx` |
+
+### 4. Database Initialization
+
+You must initialize the database schema before running the application.
+
+1.  **Connect** to your PostgreSQL database using a client (e.g., `psql`, DBeaver).
+2.  **Execute** the SQL commands from the `init.sql` file located in the root of this repository.
+
+\`\`\`bash
+# Example using psql (replace <YOUR_DB_URL> with your NEON_DATABASE_URL)
+psql <YOUR_DB_URL> -f init.sql
+\`\`\`
+
+### 5. Run Locally
+
+1.  Install dependencies:
+    \`\`\`bash
+    pnpm install
+    \`\`\`
+2.  Start the development server:
+    \`\`\`bash
+    pnpm run dev
+    \`\`\`
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Project Structure
 
@@ -56,21 +82,22 @@ Configure AI provider API keys as needed.
 │   ├── page.tsx          # Main page
 │   └── globals.css       # Global styles
 ├── components/           # React components
-├── lib/                  # Utilities and helpers
+├── lib/                  # Utilities and helpers (including db.ts)
 ├── public/               # Static assets
 ├── docker-compose.yml    # Docker Compose config
 ├── Dockerfile            # Production Docker image
-└── kubernetes/           # Kubernetes manifests
+├── kubernetes/           # Kubernetes manifests
+└── init.sql              # Database schema initialization script
 \`\`\`
 
 ## API Endpoints
 
-- `POST /api/browser/scrape` - Scrape a URL
-- `POST /api/chat/stream` - Stream AI responses
-- `GET /api/models/list` - List available models
-- `GET /api/providers/list` - List AI providers
-- `GET /api/health` - Health check
-- `GET /api/status` - System status
+- \`POST /api/browser/scrape\` - Scrape a URL
+- \`POST /api/chat/stream\` - Stream AI responses
+- \`GET /api/models/list\` - List available models
+- \`GET /api/providers/list\` - List AI providers
+- \`GET /api/health\` - Health check
+- \`GET /api/status\` - System status
 
 ## Deployment
 
@@ -82,14 +109,14 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
 - Auto-deploy on push to main
 
 ### Docker
+
 \`\`\`bash
-docker build -t genspark-ai-browser:latest .
-docker run -p 3000:3000 genspark-ai-browser:latest
+docker-compose up -d
 \`\`\`
 
 ### Kubernetes
+
 \`\`\`bash
-kubectl apply -f kubernetes/namespace.yaml
 kubectl apply -f kubernetes/
 \`\`\`
 
